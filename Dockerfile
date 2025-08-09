@@ -35,6 +35,10 @@ RUN chown -R www-data:www-data /var/www/html
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD \
   php -r "exit((@file_get_contents('http://127.0.0.1/login.php')!==false)?0:1);"
 
+# Silence 'Could not reliably determine the server's FQDN'
+RUN printf "ServerName admin.movana.me\n" > /etc/apache2/conf-available/servername.conf && \
+    a2enconf servername
+
 EXPOSE 80
 
 # Apache runs in foreground by default
