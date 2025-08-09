@@ -4,11 +4,11 @@ FROM php:8.3-apache
 # Enable useful Apache modules
 RUN a2enmod rewrite headers expires
 
-# --- Build deps for pdo_sqlite, then install the extension ---
+# Postgres PDO (add this near the top, before copying your app)
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends libsqlite3-dev; \
-    docker-php-ext-install -j"$(nproc)" pdo_sqlite; \
+    apt-get install -y --no-install-recommends libpq-dev; \
+    docker-php-ext-install -j"$(nproc)" pdo_pgsql; \
     rm -rf /var/lib/apt/lists/*
 
 # Optional: raise upload/post limits
