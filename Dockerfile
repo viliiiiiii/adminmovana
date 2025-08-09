@@ -4,11 +4,22 @@ FROM php:8.3-apache
 # Enable useful Apache modules
 RUN a2enmod rewrite headers expires
 
-# Security headers & tight defaults via Apache vhost
-# (kept inline for simplicity; you can move to a separate conf file if you prefer)
+# ---- PHP extensions needed by the admin (SQLite + PDO + file info) ----
+# pdo/pdo_sqlite are bundled with PHP; docker-php-ext-install compiles them in.
+RUN docker-php-ext-install pdo pdo_sqlite
+
+# Optional: raise upload/post limits a bit (tweak to your needs)
+RUN { \
+      echo "upload_max_filesize=10M"; \
+      echo "post_max_size=12M"; \
+      echo "memory_limit=256M"; \
+   } > /usr/local/etc/php/conf.d/uploads.ini
+
+# ---- Apache vhost with security headers ----
 RUN set -eux; \
   { \
     echo '<VirtualHost *:80>'; \
+    echo '  ServerName admin.movana.me'; \
     echo '  ServerAdmin admin@movana.me'; \
     echo '  DocumentRoot /var/www/html'; \
     echo '  <Directory /var/www/html>'; \
@@ -24,21 +35,20 @@ RUN set -eux; \
     echo '</VirtualHost>'; \
   } > /etc/apache2/sites-available/000-default.conf
 
+# Silence 'Could not reliably determine the server's FQDN'
+RUN printf "ServerName admin.movana.me\n" > /etc/apache2/conf-available/servername.conf && \
+    a2enconf servername
+
 # Copy app files
-# (Assumes Dockerfile sits next to config.php, login.php, index.php, logout.php)
 COPY . /var/www/html/
 
-# Tighten permissions a bit
-RUN chown -R www-data:www-data /var/www/html
+# Create data dirs (SQLite DB + uploads) and set permissions
+RUN mkdir -p /var/www/html/var/uploads && \
+    chown -R www-data:www-data /var/www/html
 
 # Healthcheck: login page should be reachable
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD \
   php -r "exit((@file_get_contents('http://127.0.0.1/login.php')!==false)?0:1);"
 
-# Silence 'Could not reliably determine the server's FQDN'
-RUN printf "ServerName admin.movana.me\n" > /etc/apache2/conf-available/servername.conf && \
-    a2enconf servername
-
 EXPOSE 80
-
 # Apache runs in foreground by default
