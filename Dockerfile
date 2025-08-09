@@ -11,6 +11,7 @@ RUN set -eux; \
     docker-php-ext-install -j"$(nproc)" pdo_pgsql; \
     rm -rf /var/lib/apt/lists/*
 
+
 # Optional: raise upload/post limits
 RUN { \
       echo "upload_max_filesize=10M"; \
