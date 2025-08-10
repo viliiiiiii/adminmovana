@@ -7,22 +7,19 @@ function db(): PDO {
 
   $driver = getenv('DB_DRIVER') ?: '';
   if ($driver === 'pgsql') {
-    $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s',
-      getenv('DB_HOST'), getenv('DB_PORT') ?: '5432', getenv('DB_NAME'));
+    $dsn = sprintf('pgsql:host=%s;port=%s;dbname=%s', getenv('DB_HOST'), getenv('DB_PORT') ?: '5432', getenv('DB_NAME'));
     $pdo = new PDO($dsn, getenv('DB_USER'), getenv('DB_PASS'), [
       PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
   } elseif ($driver === 'mysql') {
-    $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s',
-      getenv('DB_HOST'), getenv('DB_PORT') ?: '3306', getenv('DB_NAME'), getenv('DB_CHARSET') ?: 'utf8mb4');
+    $dsn = sprintf('mysql:host=%s;port=%s;dbname=%s;charset=%s', getenv('DB_HOST'), getenv('DB_PORT') ?: '3306', getenv('DB_NAME'), getenv('DB_CHARSET') ?: 'utf8mb4');
     $pdo = new PDO($dsn, getenv('DB_USER'), getenv('DB_PASS'), [
       PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
     ]);
   } else {
-    $dbDir = __DIR__ . '/var';
-    if (!is_dir($dbDir)) mkdir($dbDir, 0775, true);
+    $dbDir = __DIR__ . '/var'; if (!is_dir($dbDir)) mkdir($dbDir, 0775, true);
     $pdo = new PDO('sqlite:' . $dbDir . '/app.sqlite', null, null, [
       PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
       PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
@@ -30,7 +27,6 @@ function db(): PDO {
     $pdo->exec('PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;');
     $driver = 'sqlite';
   }
-
   ensure_schema($pdo, $driver);
   seed_admin_if_needed($pdo);
   return $pdo;
@@ -95,6 +91,41 @@ function ensure_schema(PDO $pdo, string $driver): void {
     )
   ");
 
+  // companies
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS companies (
+      id $autoId,
+      name VARCHAR(255) NOT NULL,
+      domain VARCHAR(255) NULL,
+      status VARCHAR(32) NOT NULL DEFAULT 'prospect', -- prospect, active, paused, closed
+      site_url VARCHAR(500) NULL,
+      notes TEXT NULL,
+      created_at $tsType DEFAULT $now
+    )
+  ");
+
+  // company_financials (monthly)
+  $pdo->exec("
+    CREATE TABLE IF NOT EXISTS company_financials (
+      id $autoId,
+      company_id INT NOT NULL,
+      period VARCHAR(7) NOT NULL, -- YYYY-MM
+      revenue_cents BIGINT NOT NULL DEFAULT 0,
+      expenses_cents BIGINT NOT NULL DEFAULT 0,
+      notes TEXT NULL,
+      created_at $tsType DEFAULT $now
+    )
+  ");
+
+  // FK if supported
+  try {
+    if ($driver !== 'sqlite') {
+      $pdo->exec("ALTER TABLE company_financials
+        ADD CONSTRAINT IF NOT EXISTS fk_fin_company
+        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE");
+    }
+  } catch (Throwable $e) { /* ignore if already exists */ }
+
   if (setting_get('spots_left') === null) {
     setting_set('spots_left', 3);
     activity('init_defaults', []);
@@ -104,10 +135,8 @@ function ensure_schema(PDO $pdo, string $driver): void {
 function seed_admin_if_needed(PDO $pdo): void {
   $email = getenv('ADMIN_USER') ?: null;
   $hash  = getenv('ADMIN_PASS_HASH') ?: null;
-  if (!$email || !$hash) return; // nothing to seed
-
-  $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-  $stmt->execute([$email]);
+  if (!$email || !$hash) return;
+  $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?'); $stmt->execute([$email]);
   if (!$stmt->fetchColumn()) {
     $pdo->prepare('INSERT INTO users(email, pass_hash) VALUES (?, ?)')->execute([$email, $hash]);
     activity('seed_admin', ['email' => $email]);
@@ -121,7 +150,7 @@ function activity(string $action, array $meta = []): void {
       ->execute([$action, json_encode($meta, JSON_UNESCAPED_UNICODE)]);
 }
 
-/** Settings helpers */
+/** Settings helpers with portable upsert */
 function setting_get(string $key, $default = null) {
   $pdo = db();
   $stmt = $pdo->prepare('SELECT value FROM settings WHERE key = ?');
@@ -137,7 +166,7 @@ function setting_set(string $key, $value): void {
     $sql = 'INSERT INTO settings(`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=VALUES(`value`)';
   } elseif ($driver === 'pgsql') {
     $sql = 'INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value';
-  } else { // sqlite
+  } else {
     $sql = 'INSERT INTO settings(key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value';
   }
   $pdo->prepare($sql)->execute([$key, $val]);
