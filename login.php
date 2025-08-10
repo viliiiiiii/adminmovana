@@ -1,33 +1,44 @@
 <?php
 require_once __DIR__ . '/config.php';
-if (is_logged_in()) { header('Location: /index.php'); exit; }
-
 $error = '';
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-  $email = trim($_POST['email'] ?? '');
-  $pass  = $_POST['password'] ?? '';
-  $tok   = $_POST['csrf'] ?? '';
-  if (!csrf_check($tok))        $error = 'Invalid CSRF token.';
-  elseif ($email === '' || $pass === '') $error = 'Email and password required.';
-  elseif (login_admin_db($email, $pass)) { header('Location: /index.php'); exit; }
-  else $error = 'Invalid credentials.';
+if ($_SERVER['REQUEST_METHOD']==='POST') {
+  if (!csrf_check($_POST['csrf'] ?? '')) { $error='Invalid token'; }
+  else {
+    $ok = login_admin_db(trim($_POST['email'] ?? ''), $_POST['password'] ?? '');
+    if ($ok) { header('Location: /index.php'); exit; }
+    $error = 'Invalid credentials';
+  }
 }
 ?>
-<!DOCTYPE html><html lang="en"><head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Movana Admin Login</title>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Login · Movana Admin</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>(function(){const s=localStorage.getItem('theme');const d=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(s==='dark'||(!s&&d))document.documentElement.classList.add('dark');})();</script>
+<script> (function(){const s=localStorage.getItem('theme');if(s==='dark')document.documentElement.classList.add('dark')})(); </script>
 </head>
-<body class="bg-gray-100 dark:bg-slate-900 min-h-screen grid place-items-center p-6">
-  <div class="bg-white dark:bg-slate-950 shadow-lg p-8 rounded w-full max-w-md border border-slate-200 dark:border-slate-800">
-    <h1 class="text-2xl font-bold mb-6 text-center">Movana Admin</h1>
-    <?php if ($error): ?><div class="mb-4 text-sm text-red-600"><?= e($error) ?></div><?php endif; ?>
-    <form method="POST" class="space-y-4">
+<body class="min-h-screen grid place-items-center bg-slate-100 dark:bg-slate-950 text-slate-900 dark:text-slate-100">
+  <div class="w-full max-w-md p-8 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-950/60 backdrop-blur">
+    <div class="flex items-center gap-3 mb-6">
+      <div class="h-10 w-10 rounded-xl bg-indigo-600"></div>
+      <div class="text-lg font-bold">Movana Admin</div>
+    </div>
+    <?php if ($error): ?>
+      <div class="mb-4 px-4 py-3 rounded-lg border bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/25 dark:text-rose-100 dark:border-rose-800"><?= e($error) ?></div>
+    <?php endif; ?>
+    <form method="POST" class="space-y-3">
       <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-      <input type="email" name="email" placeholder="Email" class="w-full border px-3 py-2 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" required>
-      <input type="password" name="password" placeholder="Password" class="w-full border px-3 py-2 rounded bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700" required>
-      <button class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Sign in</button>
+      <div>
+        <label class="text-sm">Email</label>
+        <input type="email" name="email" required class="input w-full">
+      </div>
+      <div>
+        <label class="text-sm">Password</label>
+        <input type="password" name="password" required class="input w-full">
+      </div>
+      <button class="btn btn-primary w-full">Sign in</button>
     </form>
   </div>
-</body></html>
+</body>
+</html>

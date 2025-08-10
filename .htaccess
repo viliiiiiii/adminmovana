@@ -1,5 +1,5 @@
-# Deny direct access to internal storage
-RedirectMatch 404 ^/var/
-
-# Security + neat URLs (optional)
-Options -Indexes
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^$ index.php [L]
+RewriteRule ^([^/]+)/?$ index.php?page=$1 [QSA,NC,L]
