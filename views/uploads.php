@@ -41,15 +41,7 @@ $pages = max(1,(int)ceil($total/$per));
             <td><?= number_format((int)$f['size']/1024,1) ?> KB</td>
             <td><?= e($f['uploaded_at']) ?></td>
             <td>
-              <button
-                type="button"
-                class="js-preview px-3 py-1.5 rounded border hover:bg-slate-50 dark:hover:bg-slate-800"
-                data-id="<?= (int)$f['id'] ?>"
-                data-mime="<?= e($f['mime']) ?>"
-                data-name="<?= e($f['filename']) ?>"
-                >
-                Preview
-              </button>
+              <button type="button" class="js-preview px-3 py-1.5 rounded-xl border bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 hover:opacity-90" ...>Preview</button>
             </td>
             <td class="text-right">
               <form method="POST" action="/actions.php" class="inline" onsubmit="return confirm('Delete file #<?= (int)$f['id'] ?>?')">

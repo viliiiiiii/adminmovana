@@ -5,21 +5,21 @@ header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: no-referrer-when-downgrade');
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com");
 
-// Sessions
+// Sessions (guarded so we only configure before session starts)
 $cookieDomain = getenv('COOKIE_DOMAIN') ?: '';
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
       || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
 
-session_set_cookie_params([
-  'lifetime' => 60 * 60 * 8,
-  'path'     => '/',
-  'domain'   => $cookieDomain ?: null,
-  'secure'   => $https,
-  'httponly' => true,
-  'samesite' => 'Lax',
-]);
-if (session_status() !== PHP_SESSION_ACTIVE) {
-    session_start();
+if (session_status() === PHP_SESSION_NONE) {
+  session_set_cookie_params([
+    'lifetime' => 60 * 60 * 8,
+    'path'     => '/',
+    'domain'   => $cookieDomain ?: null,
+    'secure'   => $https,
+    'httponly' => true,
+    'samesite' => 'Lax',
+  ]);
+  session_start();
 }
 
 // CSRF
