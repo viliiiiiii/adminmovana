@@ -1,11 +1,11 @@
 <?php
-// config.php — security headers, session, CSRF, auth helpers (DB-backed)
-
+// Security headers
 header('X-Content-Type-Options: nosniff');
 header('X-Frame-Options: SAMEORIGIN');
 header('Referrer-Policy: no-referrer-when-downgrade');
 header("Content-Security-Policy: default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com");
 
+// Sessions
 $cookieDomain = getenv('COOKIE_DOMAIN') ?: '';
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
       || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https');
@@ -20,17 +20,18 @@ session_set_cookie_params([
 ]);
 if (session_status() !== PHP_SESSION_ACTIVE) session_start();
 
+// CSRF
 if (empty($_SESSION['csrf'])) $_SESSION['csrf'] = bin2hex(random_bytes(32));
 function csrf_token(): string { return $_SESSION['csrf']; }
 function csrf_check(string $t): bool { return hash_equals($_SESSION['csrf'] ?? '', $t); }
 
+// Auth helpers (DB-backed)
 function is_logged_in(): bool {
   return !empty($_SESSION['auth']) && !empty($_SESSION['user_id']);
 }
 function require_login(): void {
   if (!is_logged_in()) { header('Location: /login.php'); exit; }
 }
-
 function login_admin_db(string $email, string $password): bool {
   require_once __DIR__ . '/db.php';
   $pdo = db();
@@ -60,5 +61,4 @@ function logout_admin(): void {
   }
   session_destroy();
 }
-
 function e(string $v): string { return htmlspecialchars($v, ENT_QUOTES, 'UTF-8'); }

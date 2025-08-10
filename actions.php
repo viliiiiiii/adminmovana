@@ -13,7 +13,7 @@ $back = $_POST['_back'] ?? '/index.php';
 
 try {
   switch ($act) {
-    /* ----- Settings ----- */
+    /* Settings */
     case 'spots_inc':
     case 'spots_dec': {
       $v = (int) setting_get('spots_left', 3);
@@ -31,7 +31,7 @@ try {
       break;
     }
 
-    /* ----- Auth ----- */
+    /* Profile */
     case 'password_change': {
       $pw1 = $_POST['new_password'] ?? '';
       $pw2 = $_POST['new_password2'] ?? '';
@@ -44,30 +44,33 @@ try {
       break;
     }
 
-    /* ----- Leads ----- */
+    /* Leads */
     case 'lead_add': {
       $name = trim($_POST['name'] ?? '');
       $email = trim($_POST['email'] ?? '');
       $message = trim($_POST['message'] ?? '');
-      if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('Name and valid email are required.');
+      if ($name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) throw new RuntimeException('Name and valid email required.');
       db()->prepare('INSERT INTO leads(name,email,message) VALUES (?,?,?)')->execute([$name,$email,$message]);
-      activity('lead_add', ['name'=>$name,'email'=>$email]); flash_add('success','Lead added.');
+      activity('lead_add', ['name'=>$name,'email'=>$email]);
+      flash_add('success','Lead added.');
       break;
     }
     case 'lead_status': {
       $id = (int)($_POST['id'] ?? 0); $status = $_POST['status'] ?? 'new';
       db()->prepare('UPDATE leads SET status=? WHERE id=?')->execute([$status,$id]);
-      activity('lead_status', ['id'=>$id,'status'=>$status]); flash_add('success',"Lead #$id → $status");
+      activity('lead_status', ['id'=>$id,'status'=>$status]);
+      flash_add('success',"Lead #$id → $status");
       break;
     }
     case 'lead_delete': {
       $id = (int)($_POST['id'] ?? 0);
       db()->prepare('DELETE FROM leads WHERE id=?')->execute([$id]);
-      activity('lead_delete', ['id'=>$id]); flash_add('success',"Lead #$id deleted.");
+      activity('lead_delete', ['id'=>$id]);
+      flash_add('success',"Lead #$id deleted.");
       break;
     }
 
-    /* ----- Files ----- */
+    /* Files */
     case 'upload_file': {
       if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) throw new RuntimeException('Upload failed.');
       $file = $_FILES['file'];
@@ -79,32 +82,28 @@ try {
       $safe = bin2hex(random_bytes(8)) . '.' . $ext;
       $dir = __DIR__ . '/var/uploads'; if (!is_dir($dir)) mkdir($dir, 0775, true);
       $dest = $dir . '/' . $safe; if (!move_uploaded_file($file['tmp_name'], $dest)) throw new RuntimeException('Failed to save file.');
-      db()->prepare('INSERT INTO uploads(filename,path,size,mime) VALUES (?,?,?,?)')
-         ->execute([$file['name'], 'var/uploads/' . $safe, $file['size'], $mime]);
-      activity('upload_file', ['fn'=>$file['name'],'mime'=>$mime,'size'=>$file['size']]); flash_add('success','File uploaded.');
+      db()->prepare('INSERT INTO uploads(filename,path,size,mime) VALUES (?,?,?,?)')->execute([$file['name'], 'var/uploads/' . $safe, $file['size'], $mime]);
+      activity('upload_file', ['fn'=>$file['name'],'mime'=>$mime,'size'=>$file['size']]);
+      flash_add('success','File uploaded.');
       break;
     }
     case 'file_delete': {
       $id = (int)($_POST['id'] ?? 0);
       $row = db()->prepare('SELECT path FROM uploads WHERE id=?'); $row->execute([$id]); $f = $row->fetch();
-      if ($f) {
-        @unlink(__DIR__ . '/' . $f['path']);
-        db()->prepare('DELETE FROM uploads WHERE id=?')->execute([$id]);
-        activity('file_delete', ['id'=>$id]); flash_add('success',"File #$id deleted.");
-      }
+      if ($f) { @unlink(__DIR__ . '/' . $f['path']); db()->prepare('DELETE FROM uploads WHERE id=?')->execute([$id]); }
+      activity('file_delete', ['id'=>$id]); flash_add('success',"File #$id deleted.");
       break;
     }
 
-    /* ----- Companies ----- */
+    /* Companies */
     case 'company_add': {
       $name = trim($_POST['name'] ?? '');
-      if ($name === '') throw new RuntimeException('Company name is required.');
+      if ($name === '') throw new RuntimeException('Company name required.');
       $domain = trim($_POST['domain'] ?? '') ?: null;
       $status = $_POST['status'] ?? 'prospect';
       $site   = trim($_POST['site_url'] ?? '') ?: null;
       $notes  = trim($_POST['notes'] ?? '') ?: null;
-      db()->prepare('INSERT INTO companies(name,domain,status,site_url,notes) VALUES (?,?,?,?,?)')
-        ->execute([$name,$domain,$status,$site,$notes]);
+      db()->prepare('INSERT INTO companies(name,domain,status,site_url,notes) VALUES (?,?,?,?,?)')->execute([$name,$domain,$status,$site,$notes]);
       activity('company_add', ['name'=>$name,'status'=>$status]);
       flash_add('success', 'Company added.');
       break;
@@ -122,8 +121,7 @@ try {
       $domain = trim($_POST['domain'] ?? '') ?: null;
       $site   = trim($_POST['site_url'] ?? '') ?: null;
       $notes  = trim($_POST['notes'] ?? '') ?: null;
-      db()->prepare('UPDATE companies SET domain=?, site_url=?, notes=? WHERE id=?')
-        ->execute([$domain,$site,$notes,$id]);
+      db()->prepare('UPDATE companies SET domain=?, site_url=?, notes=? WHERE id=?')->execute([$domain,$site,$notes,$id]);
       activity('company_save', ['id'=>$id]);
       flash_add('success', 'Company updated.');
       break;
@@ -136,7 +134,7 @@ try {
       break;
     }
 
-    /* ----- Financials ----- */
+    /* Financials */
     case 'finance_add': {
       $cid   = (int)($_POST['company_id'] ?? 0);
       $per   = $_POST['period'] ?? '';

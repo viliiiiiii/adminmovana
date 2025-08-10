@@ -1,4 +1,5 @@
-# Deny access to internal storage
+# Deny direct access to internal storage
 RedirectMatch 404 ^/var/
-# Security hardening
+
+# Security + neat URLs (optional)
 Options -Indexes

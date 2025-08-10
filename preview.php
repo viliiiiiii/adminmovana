@@ -14,7 +14,6 @@ if (!$f) { http_response_code(404); exit('Not found'); }
 $abs = __DIR__ . '/' . $f['path'];
 if (!is_file($abs)) { http_response_code(404); exit('Missing'); }
 
-// Allow only safe mime types for inline preview
 $mime = $f['mime'];
 $inline = in_array($mime, ['image/jpeg','image/png','image/webp','application/pdf','text/plain','text/csv'], true);
 

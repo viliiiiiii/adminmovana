@@ -1,5 +1,5 @@
 <?php
-// db.php — PDO bootstrap (Postgres/MySQL with SQLite fallback) + auto-migrate + admin seed
+// PDO bootstrap (Postgres/MySQL with SQLite fallback) + auto-migrate + admin seed
 
 function db(): PDO {
   static $pdo = null;
@@ -97,14 +97,14 @@ function ensure_schema(PDO $pdo, string $driver): void {
       id $autoId,
       name VARCHAR(255) NOT NULL,
       domain VARCHAR(255) NULL,
-      status VARCHAR(32) NOT NULL DEFAULT 'prospect', -- prospect, active, paused, closed
+      status VARCHAR(32) NOT NULL DEFAULT 'prospect',
       site_url VARCHAR(500) NULL,
       notes TEXT NULL,
       created_at $tsType DEFAULT $now
     )
   ");
 
-  // company_financials (monthly)
+  // company_financials
   $pdo->exec("
     CREATE TABLE IF NOT EXISTS company_financials (
       id $autoId,
@@ -124,7 +124,7 @@ function ensure_schema(PDO $pdo, string $driver): void {
         ADD CONSTRAINT IF NOT EXISTS fk_fin_company
         FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE");
     }
-  } catch (Throwable $e) { /* ignore if already exists */ }
+  } catch (Throwable $e) {}
 
   if (setting_get('spots_left') === null) {
     setting_set('spots_left', 3);
@@ -143,14 +143,12 @@ function seed_admin_if_needed(PDO $pdo): void {
   }
 }
 
-/** Activity log */
 function activity(string $action, array $meta = []): void {
   $pdo = db();
   $pdo->prepare('INSERT INTO activity(action, meta, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)')
       ->execute([$action, json_encode($meta, JSON_UNESCAPED_UNICODE)]);
 }
 
-/** Settings helpers with portable upsert */
 function setting_get(string $key, $default = null) {
   $pdo = db();
   $stmt = $pdo->prepare('SELECT value FROM settings WHERE key = ?');
