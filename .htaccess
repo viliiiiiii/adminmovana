@@ -1,5 +1,12 @@
 RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
+
+# 1) Never rewrite real files or directories
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+# 2) Route "/" to index.php
 RewriteRule ^$ index.php [L]
+
+# 3) Route "/something" to index.php?page=something
 RewriteRule ^([^/]+)/?$ index.php?page=$1 [QSA,NC,L]
